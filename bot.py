@@ -27,7 +27,7 @@ async def main_menu(update: Update, context: CallbackContext):
     ]
     reply_markup = InlineKeyboardMarkup(keyboard)
 
-    text = """🔥 **Fast OTP Fetcher Bot**
+    text = """🔥 **SUPER FIRE OTP BOT**
 
 নিচের অপশনগুলো ব্যবহার করুন।"""
 
@@ -47,32 +47,13 @@ async def button_handler(update: Update, context: CallbackContext):
         await main_menu(update, context)
 
     elif data == "getnumber":
-        keyboard = [
-            [InlineKeyboardButton("📘 Facebook", callback_data="service_facebook")],
-            [InlineKeyboardButton("📷 Instagram", callback_data="service_instagram")],
-            [InlineKeyboardButton("🔄 Refresh Services", callback_data="refresh")],
-            [InlineKeyboardButton("🔙 Back", callback_data="back")]
-        ]
-        reply_markup = InlineKeyboardMarkup(keyboard)
-        await query.edit_message_text("🔍 **Select Service:**", reply_markup=reply_markup)
-
-    elif data.startswith("service_"):
-        service = data.split("_")[1].capitalize()
-        await query.answer(f"📱 {service} নাম্বার নেওয়া হচ্ছে...", show_alert=True)
-        await asyncio.sleep(2)
-        await query.edit_message_text(f"✅ {service} নাম্বার রেডি!\n\nনাম্বার: +8801XXXXXXXXX\n\nOTP অপেক্ষা করুন...")
-
-    elif data == "refresh":
-        await query.answer("🔄 সার্ভিস রিফ্রেশ করা হচ্ছে...", show_alert=True)
-
-    elif data == "back":
-        await main_menu(update, context)
+        await query.answer("📱 GET NUMBER সার্ভিস শুরু হচ্ছে...", show_alert=True)
 
     elif data == "status":
-        await query.answer("📊 ব্যালেন্স: 0.0 BDT", show_alert=True)
+        await query.answer("📊 Status: Active", show_alert=True)
 
     elif data == "admin":
-        await query.answer("👨‍💼 অ্যাডমিনের সাথে যোগাযোগ করা হচ্ছে...", show_alert=True)
+        await query.answer("👨‍💼 Admin Contact: @YourAdmin", show_alert=True)
 
     else:
         await main_menu(update, context)
