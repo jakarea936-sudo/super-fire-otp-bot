@@ -101,23 +101,24 @@ async def handle_message(update: Update, context: CallbackContext):
     elif text == "🔐 2FA CODE":
         await update.message.reply_text("🔐 আপনার টু-ফ্যাক্টর (2FA) কোডটি এখানে দিন বা জেনারেট করুন।")
 
-# --- ⚡ ওয়েব হুক রিসিভার এন্ডপয়েন্ট (FastAPI) ---
+# --- ⚡ ওয়েব হুক এবং ওটিপি এন্ডপয়েন্ট (FastAPI) ---
 
 @app_fastapi.post("/fastx-webhook")
 async def receive_telegram_update(request: Request):
-    """টেলিগ্রাম থেকে আসা সমস্ত মেসেজ এই এন্ডপয়েন্টে রিসিভ হবে এবং বটের লজিকে চলে যাবে"""
+    """টেলিগ্রাম থেকে পাঠানো রিয়েল-টাইম আপডেট হ্যান্ডল করবে"""
     try:
         data = await request.json()
         update = Update.de_json(data, app_telegram.bot)
-        await app_telegram.process_update(update)
+        
+        # ব্যাকগ্রাউন্ডে অ্যাসিনক্রোনাসলি রান করার জন্য টাস্ক ক্রিয়েট করা হলো
+        asyncio.create_task(app_telegram.application.process_update(update))
         return {"status": "ok"}
     except Exception as e:
-        logging.error(f"Error processing update: {e}")
+        logging.error(f"Webhook Error: {e}")
         return {"status": "error", "details": str(e)}
 
 @app_fastapi.post("/instant-otp")
 async def receive_instant_otp(payload: OTPPayload):
-    """আপনার ওটিপি প্যানেল সরাসরি এই এন্ডপয়েন্টে রিকোয়েস্ট পাঠাবে"""
     otp = payload.otp
     service = payload.service
     phone = payload.phone_number
@@ -139,18 +140,22 @@ async def receive_instant_otp(payload: OTPPayload):
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
-async def run_bot_and_api():
+@app_fastapi.on_event("startup")
+async def startup_event():
+    # হ্যান্ডলার অ্যাড করা
     app_telegram.add_handler(CommandHandler("start", start))
     app_telegram.add_handler(CallbackQueryHandler(handle_callback))
     app_telegram.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_message))
     
+    # টেলিগ্রাম অ্যাপ লাইফসাইকেল চালু করা
     await app_telegram.initialize()
     await app_telegram.start()
-    print("🚀 টেলিগ্রাম বট এবং এপিআই সফলভাবে ব্যাকগ্রাউন্ডে রান হয়েছে...")
+    logging.info("🚀 বট এবং এপিআই সফলভাবে সংযুক্ত হয়েছে...")
 
-@app_fastapi.on_event("startup")
-async def startup_event():
-    asyncio.create_task(run_bot_and_api())
+@app_fastapi.on_event("shutdown")
+async def shutdown_event():
+    await app_telegram.stop()
+    await app_telegram.shutdown()
 
 if __name__ == '__main__':
     port = int(os.environ.get("PORT", 8080))
