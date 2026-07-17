@@ -1,6 +1,7 @@
 import logging
 import re
 import asyncio
+import os
 from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel
 import uvicorn
@@ -8,14 +9,17 @@ from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup, ReplyKe
 from telegram.ext import Application, MessageHandler, filters, CallbackContext, CommandHandler, CallbackQueryHandler
 from telegram.constants import ParseMode
 
-# ⚠️ আপনার ক্রেডেনশিয়ালস
+# ⚠️ আপনার ক্রেডেনশিয়ালস
 TOKEN = "8862479708:AAG6jNfd_SKeBqA1Jq3BmL9mRlg0iOVQdTI"
 YOUR_CHAT_ID = 7455109015
 API_KEY = "MURAD_F455C219DCF80BC50E1E696E" # আপনার প্যানেল এপিআই কি
 
 logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s - %(message)s', level=logging.INFO)
 
-# টেলিগ্রাম এবং FastAPI ইনিশিয়ালাইজেশন
+# 📢 ভেরিফাইড ইউজারদের ডাটাবেজ ট্র্যাক রাখার জন্য সেট (এটি কোডে মিসিং ছিল)
+authorized_users = set()
+
+# টেলিগ্রাম এবং FastAPI ইনিশিয়ালাইজেশন
 app_telegram = Application.builder().token(TOKEN).build()
 app_fastapi = FastAPI()
 
@@ -25,13 +29,13 @@ class OTPPayload(BaseModel):
     service: str = "Unknown"
     phone_number: str = "Unknown"
 
-# মেইন কিবোর্ড মেনু (আপনার রিকোয়ারমেন্ট অনুযায়ী শুধুমাত্র ২ টি বোতাম)
+# মেইন কিবোর্ড মেনু (আপনার রিকোয়ারমেন্ট অনুযায়ী শুধুমাত্র ২ টি বোতাম)
 def get_main_menu_keyboard():
     return ReplyKeyboardMarkup([
         [KeyboardButton("🎲 GET NUMBER"), KeyboardButton("🔐 2FA CODE")]
     ], resize_keyboard=True, persistent=True)
 
-# আনভেরিফাইড ইউজারদের জন্য চ্যানেল জয়েন কিবোর্ড
+# আনভেরিফাইড ইউজারদের জন্য চ্যানেল জয়েন কিবোর্ড
 def get_join_keyboard():
     return InlineKeyboardMarkup([
         [InlineKeyboardButton("📢 Join Join 1", url="https://t.me/EASY_MARKETING1")],
@@ -58,7 +62,7 @@ async def start(update: Update, context: CallbackContext):
             reply_markup=get_main_menu_keyboard()
         )
     else:
-        welcome_text = "🔒 **বট ব্যবহার করার আগে নিচের চ্যানেলগুলোতে জয়েন করুন!**\n\nচ্যানেলে জয়েন করার পর **✅ Verify** বাটনে চাপ দিন।"
+        welcome_text = "🔒 **বট ব্যবহার করার আগে নিচের চ্যানেলগুলোতে জয়েন করুন!**\n\nচ্যানেলে জয়েন করার পর **✅ Verify** বাটনে চাপ দিন।"
         await update.message.reply_text(welcome_text, reply_markup=get_join_keyboard(), parse_mode=ParseMode.MARKDOWN)
 
 async def handle_callback(update: Update, context: CallbackContext):
@@ -79,7 +83,7 @@ async def handle_callback(update: Update, context: CallbackContext):
     elif query.data == "service_ig":
         await query.message.edit_text("আপনি **Instagram** সার্ভিসটি সিলেক্ট করেছেন। ওটিপি-র জন্য অপেক্ষা করুন...", reply_markup=get_services_keyboard())
     elif query.data == "refresh_services":
-        await query.message.edit_text("🔄 সার্ভিস লিস্ট রিফ্রেশ করা হয়েছে।\n\n🔍 Select Service:", reply_markup=get_services_keyboard())
+        await query.message.edit_text("🔄 সার্ভিস লিস্ট রিফ্রেশ করা হয়েছে।\n\n🔍 Select Service:", reply_markup=get_services_keyboard())
     elif query.data == "back_main":
         await query.message.delete()
         await context.bot.send_message(chat_id=user_id, text="🏠 আপনি মেইন মেনুতে ফিরে এসেছেন।", reply_markup=get_main_menu_keyboard())
@@ -89,7 +93,7 @@ async def handle_message(update: Update, context: CallbackContext):
     user_id = update.effective_user.id
 
     if user_id not in authorized_users:
-        await update.message.reply_text("🔒 **বট ব্যবহার করার আগে নিচের চ্যানেলগুলোতে জয়েন করুন!**", reply_markup=get_join_keyboard())
+        await update.message.reply_text("🔒 **বট ব্যবহার করার আগে নিচের চ্যানেলগুলোতে জয়েন করুন!**", reply_markup=get_join_keyboard())
         return
 
     if text == "🎲 GET NUMBER":
@@ -102,8 +106,8 @@ async def handle_message(update: Update, context: CallbackContext):
 @app_fastapi.post("/fastx-webhook")
 async def receive_instant_otp(payload: OTPPayload):
     """
-    আপনার প্যানেল বা সাইট ওটিপি পাওয়ার সাথে সাথে সরাসরি এই এন্ডপয়েন্টে রিকোয়েস্ট পাঠাবে।
-    কোনো লুপ বা ইন্টারভাল ছাড়াই মিলি-সেকেন্ডের মধ্যে টেলিগ্রামে ফরওয়ার্ড হবে।
+    আপনার প্যানেল বা সাইট ওটিপি পাওয়ার সাথে সাথে সরাসরি এই এন্ডপয়েন্টে রিকোয়েস্ট পাঠাবে।
+    কোনো লুপ বা ইন্টারভাল ছাড়াই মিলি-সেকেন্ডের মধ্যে টেলিগ্রামে ফরওয়ার্ড হবে।
     """
     otp = payload.otp
     service = payload.service
@@ -134,14 +138,12 @@ async def run_bot_and_api():
     await app_telegram.initialize()
     await app_telegram.start()
     await app_telegram.updater.start_polling()
-    print("🚀 টেলিগ্রাম বট ব্যাকগ্রাউন্ডে সফলভাবে রান হয়েছে...")
+    print("🚀 টেলিগ্রাম বট ব্যাকগ্রাউন্ডে সফলভাবে রান হয়েছে...")
 
 @app_fastapi.on_event("startup")
 async def startup_event():
     asyncio.create_task(run_bot_and_api())
 
 if __name__ == '__main__':
-    # Railway-এর ডাইনামিক পোর্ট ধরার জন্য এই কনফিগারেশন জরুরি
-    import os
     port = int(os.environ.get("PORT", 8080))
     uvicorn.run(app_fastapi, host="0.0.0.0", port=port)
