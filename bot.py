@@ -23,18 +23,19 @@ async def start(update: Update, context: CallbackContext):
     await update.message.reply_text("🔥 **SUPER FIRE OTP BOT** চালু হয়েছে। নিচের বাটনগুলো ব্যবহার করুন।", reply_markup=keyboard, parse_mode=ParseMode.MARKDOWN)
 
 async def handle_message(update: Update, context: CallbackContext):
-    text = update.message.text
+    text = update.message.text.strip()
     user_id = update.effective_user.id
 
     if text == "✅ Verify":
         authorized_users.add(user_id)
         await update.message.reply_text("✅ ভেরিফাই সফল! এখন OTP অ্যালার্ট পাবেন।")
 
+    elif text == "📊 My Status":
+        state = "✅ ভেরিফাইড" if user_id in authorized_users else "❌ Verify করুন"
+        await update.message.reply_text(f"📊 স্ট্যাটাস: {state}")
+
     elif text == "📱 GET NUMBER":
         await update.message.reply_text("📱 সার্ভিস নির্বাচন করুন (Facebook, Instagram ইত্যাদি)।")
-
-    elif text == "📊 My Status":
-        await update.message.reply_text("📊 স্ট্যাটাস: সক্রিয়")
 
     elif text == "👨‍💼 Contact Admin":
         await update.message.reply_text("👨‍💼 অ্যাডমিনের সাথে যোগাযোগ করুন।")
