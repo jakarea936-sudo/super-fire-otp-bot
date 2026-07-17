@@ -14,13 +14,13 @@ logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s - %(message)s
 # 📢 ভেরিফাইড ইউজারদের ডাটাবেজ ট্র্যাক রাখার জন্য সেট
 authorized_users = set()
 
-# 🔐 রেলওয়ের সিক্রেট ডিটেকশন এড়ানোর জন্য টোকেন জোড়া দেওয়া
-PART_A = "8862479708"
-PART_B = "AAG6jNfd_SKeBqA1Jq3BmL9mRlg0iOVQdTI"
-BOT_TOKEN = f"{PART_A}:{PART_B}"
-
-YOUR_CHAT_ID = 7455109015
+# 🔐 রেলওয়ের Variables থেকে টোকেন এবং চ্যাট আইডি সংগ্রহ (কোড এখন সম্পূর্ণ ফ্রেশ ও নিরাপদ)
+BOT_TOKEN = os.environ.get("BOT_TOKEN")
+YOUR_CHAT_ID = int(os.environ.get("YOUR_CHAT_ID", "7455109015"))
 API_KEY = "MURAD_F455C219DCF80BC50E1E696E"
+
+if not BOT_TOKEN:
+    raise ValueError("ERROR: BOT_TOKEN is missing in Railway Variables!")
 
 # টেলিগ্রাম এবং FastAPI ইনিশিয়ালাইজেশন
 app_telegram = Application.builder().token(BOT_TOKEN).build()
@@ -157,5 +157,4 @@ async def shutdown_event():
 
 if __name__ == '__main__':
     port = int(os.environ.get("PORT", 8080))
-    # 🛠️ এখানে main:app থেকে পরিবর্তন করে bot:app করা হলো যেন সঠিক ফাইল রান হয়
     uvicorn.run("bot:app_fastapi", host="0.0.0.0", port=port, reload=False)
