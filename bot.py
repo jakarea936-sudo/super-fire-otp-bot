@@ -1,5 +1,6 @@
 import logging
 import re
+import asyncio
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import Application, MessageHandler, filters, CallbackContext, CommandHandler, CallbackQueryHandler
 from telegram.constants import ParseMode
@@ -27,10 +28,10 @@ async def is_user_member(bot, user_id):
 # ================== মেইন মেনু ==================
 async def main_menu(update: Update, context: CallbackContext, edit=False):
     keyboard = [
-        [InlineKeyboardButton("✅ Verify Access", callback_data="verify")],
-        [InlineKeyboardButton("📊 My Status", callback_data="status")],
+        [InlineKeyboardButton("✅ Verify Access / ভেরিফাই করুন", callback_data="verify")],
+        [InlineKeyboardButton("📊 My Status / স্ট্যাটাস", callback_data="status")],
         [InlineKeyboardButton("🛒 Services & Pricing", callback_data="services")],
-        [InlineKeyboardButton("ℹ️ Help & Instructions", callback_data="help")],
+        [InlineKeyboardButton("ℹ️ Help / সাহায্য", callback_data="help")],
         [InlineKeyboardButton("👨‍💼 Support", callback_data="support")]
     ]
     reply_markup = InlineKeyboardMarkup(keyboard)
@@ -39,11 +40,11 @@ async def main_menu(update: Update, context: CallbackContext, edit=False):
 
 **স্বাগতম!**
 গ্রুপে জয়েন হয়ে **Verify** করুন।
-OTP পেলে তাৎক্ষণিক অ্যালার্ট পাবেন।"""
+OTP আসলে তাৎক্ষণিক অ্যালার্ট পাবেন।"""
 
-    if edit:
+    if edit and update.callback_query:
         await update.callback_query.edit_message_text(text, reply_markup=reply_markup, parse_mode=ParseMode.MARKDOWN)
-    else:
+    elif update.message:
         await update.message.reply_text(text, reply_markup=reply_markup, parse_mode=ParseMode.MARKDOWN)
 
 async def button_handler(update: Update, context: CallbackContext):
@@ -54,23 +55,26 @@ async def button_handler(update: Update, context: CallbackContext):
     if data == "verify":
         if await is_user_member(context.bot, user_id):
             authorized_users.add(user_id)
-            await query.answer("✅ সফলভাবে ভেরিফাই হয়েছে!", show_alert=True)
-            await main_menu(update, context, edit=True)
+            await query.answer("✅ ভেরিফিকেশন সফল! এখন OTP পাবেন।", show_alert=True)
+            
+            # অটো ডিলিট ভেরিফিকেশন মেসেজ
+            await asyncio.sleep(2)
+            try:
+                await query.message.delete()
+            except:
+                pass
+            
+            # নতুন মেনু পাঠাও
+            await main_menu(update, context)
         else:
-            await query.answer("❌ প্রথমে গ্রুপে জয়েন করুন!\n\nEasy_marketing1 & Easy_method1", show_alert=True)
+            await query.answer("❌ গ্রুপে জয়েন হোনি!\nEasy_marketing1 ও Easy_method1", show_alert=True)
 
     elif data == "status":
         state = "✅ ভেরিফাইড" if user_id in authorized_users else "❌ ভেরিফাই করুন"
         await query.answer(f"স্ট্যাটাস: {state}")
 
-    elif data == "services":
-        await query.answer("🛒 সার্ভিস ও প্রাইসিং শীঘ্রই আসছে...", show_alert=True)
-
-    elif data == "help":
-        await query.answer("OTP আসলে অটো অ্যালার্ট পাবেন।", show_alert=True)
-
-    elif data == "support":
-        await query.answer("সাপোর্টের জন্য অ্যাডমিনের সাথে যোগাযোগ করুন।", show_alert=True)
+    elif data in ["services", "help", "support"]:
+        await query.answer("শীঘ্রই আসছে...", show_alert=True)
 
 async def start(update: Update, context: CallbackContext):
     await main_menu(update, context)
@@ -101,7 +105,7 @@ def main():
     app.add_handler(CallbackQueryHandler(button_handler))
     app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_message))
     
-    print("🚀 BOT চালু হয়েছে...")
+    print("🚀 SUPER FAST OTP FETCHER BOT চালু হয়েছে...")
     app.run_polling()
 
 if __name__ == '__main__':
