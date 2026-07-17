@@ -8,39 +8,40 @@ from telegram.constants import ParseMode
 TOKEN = "8862479708:AAG6jNfd_SKeBqA1Jq3BmL9mRlg0iOVQdTI"
 YOUR_CHAT_ID = 7455109015
 
-# সঠিক গ্রুপ ইউজারনেম (QR থেকে নেয়া)
-REQUIRED_GROUPS = ["EASY_MARKETING1", "EASY_METHOD1"]
+# আলাদা গ্রুপ
+GROUP1 = "EASY_MARKETING1"
+GROUP2 = "EASY_METHOD1"
 
 OTP_PATTERN = re.compile(r'\b(\d{4,8})\b')
 authorized_users = set()
 
 logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s - %(message)s', level=logging.INFO)
 
-async def is_user_member(bot, user_id):
-    for group in REQUIRED_GROUPS:
-        try:
-            member = await bot.get_chat_member(chat_id=f"@{group}", user_id=user_id)
-            if member.status in ["member", "administrator", "creator"]:
-                return True
-        except Exception as e:
-            print(f"Group check error for @{group}: {e}")
-            continue
-    return False
+async def check_group_membership(bot, user_id, group):
+    try:
+        member = await bot.get_chat_member(chat_id=f"@{group}", user_id=user_id)
+        return member.status in ["member", "administrator", "creator"]
+    except:
+        return False
 
 async def main_menu(update: Update, context: CallbackContext, edit=False):
     keyboard = [
-        [InlineKeyboardButton("✅ Verify Access / ভেরিফাই করুন", callback_data="verify")],
-        [InlineKeyboardButton("📊 My Status / স্ট্যাটাস", callback_data="status")],
+        [InlineKeyboardButton("✅ Verify Group 1 (Easy Marketing)", callback_data="verify1")],
+        [InlineKeyboardButton("✅ Verify Group 2 (Easy Method)", callback_data="verify2")],
+        [InlineKeyboardButton("📊 My Status", callback_data="status")],
         [InlineKeyboardButton("🛒 Services & Pricing", callback_data="services")],
-        [InlineKeyboardButton("ℹ️ Help / সাহায্য", callback_data="help")],
+        [InlineKeyboardButton("ℹ️ Help", callback_data="help")],
         [InlineKeyboardButton("👨‍💼 Support", callback_data="support")]
     ]
     reply_markup = InlineKeyboardMarkup(keyboard)
 
     text = """🔥 **SUPER FAST OTP FETCHER BOT**
 
-গ্রুপে জয়েন হয়ে **Verify** করুন।
-OTP আসলে তাৎক্ষণিক অ্যালার্ট পাবেন।"""
+**দুইটা গ্রুপ আলাদাভাবে ভেরিফাই করুন:**
+1. @EASY_MARKETING1
+2. @EASY_METHOD1
+
+OTP আসলে অটো অ্যালার্ট পাবেন।"""
 
     if edit and update.callback_query:
         await update.callback_query.edit_message_text(text, reply_markup=reply_markup, parse_mode=ParseMode.MARKDOWN)
@@ -52,23 +53,34 @@ async def button_handler(update: Update, context: CallbackContext):
     user_id = query.from_user.id
     data = query.data
 
-    if data == "verify":
-        if await is_user_member(context.bot, user_id):
+    if data == "verify1":
+        if await check_group_membership(context.bot, user_id, GROUP1):
             authorized_users.add(user_id)
-            await query.answer("✅ ভেরিফিকেশন সফল হয়েছে!", show_alert=True)
-            
+            await query.answer("✅ Group 1 ভেরিফাই সফল!", show_alert=True)
             await asyncio.sleep(1.5)
             try:
                 await query.message.delete()
             except:
                 pass
-            
             await main_menu(update, context)
         else:
-            await query.answer("❌ গ্রুপে জয়েন হোনি!\n@EASY_MARKETING1 ও @EASY_METHOD1", show_alert=True)
+            await query.answer("❌ @EASY_MARKETING1 গ্রুপে জয়েন হোন", show_alert=True)
+
+    elif data == "verify2":
+        if await check_group_membership(context.bot, user_id, GROUP2):
+            authorized_users.add(user_id)
+            await query.answer("✅ Group 2 ভেরিফাই সফল!", show_alert=True)
+            await asyncio.sleep(1.5)
+            try:
+                await query.message.delete()
+            except:
+                pass
+            await main_menu(update, context)
+        else:
+            await query.answer("❌ @EASY_METHOD1 গ্রুপে জয়েন হোন", show_alert=True)
 
     elif data == "status":
-        state = "✅ ভেরিফাইড" if user_id in authorized_users else "❌ ভেরিফাই করুন"
+        state = "✅ ভেরিফাইড" if user_id in authorized_users else "❌ একটা গ্রুপ ভেরিফাই করুন"
         await query.answer(f"স্ট্যাটাস: {state}")
 
     else:
