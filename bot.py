@@ -1,90 +1,147 @@
 import logging
 import re
-from telegram import Update, ReplyKeyboardMarkup, KeyboardButton
-from telegram.ext import Application, MessageHandler, filters, CallbackContext, CommandHandler
+import asyncio
+from fastapi import FastAPI, HTTPException
+from pydantic import BaseModel
+import uvicorn
+from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup, ReplyKeyboardMarkup, KeyboardButton
+from telegram.ext import Application, MessageHandler, filters, CallbackContext, CommandHandler, CallbackQueryHandler
 from telegram.constants import ParseMode
 
-# ⚠️ এগুলো সবসময় গোপন রাখবেন। 
+# ⚠️ আপনার ক্রেডেনশিয়ালস
 TOKEN = "8862479708:AAG6jNfd_SKeBqA1Jq3BmL9mRlg0iOVQdTI"
 YOUR_CHAT_ID = 7455109015
-
-# ৪ থেকে ৮ ডিজিটের সংখ্যা খোঁজার জন্য রেগুলার এক্সপ্রেশন
-OTP_PATTERN = re.compile(r'\b(\d{4,8})\b')
-authorized_users = set()
+API_KEY = "MURAD_F455C219DCF80BC50E1E696E" # আপনার প্যানেল এপিআই কি
 
 logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s - %(message)s', level=logging.INFO)
 
-async def start(update: Update, context: CallbackContext):
-    keyboard = ReplyKeyboardMarkup([
-        [KeyboardButton("🔗 Join Group 1"), KeyboardButton("🔗 Join Group 2")],
-        [KeyboardButton("✅ Verify")],
-        [KeyboardButton("📱 GET NUMBER"), KeyboardButton("📊 My Status")],
-        [KeyboardButton("👨‍💼 Contact Admin")]
+# টেলিগ্রাম এবং FastAPI ইনিশিয়ালাইজেশন
+app_telegram = Application.builder().token(TOKEN).build()
+app_fastapi = FastAPI()
+
+# প্যানেল থেকে আসা ওটিপি ডেটা ফরম্যাট করার মডেল
+class OTPPayload(BaseModel):
+    otp: str
+    service: str = "Unknown"
+    phone_number: str = "Unknown"
+
+# মেইন কিবোর্ড মেনু (আপনার রিকোয়ারমেন্ট অনুযায়ী শুধুমাত্র ২ টি বোতাম)
+def get_main_menu_keyboard():
+    return ReplyKeyboardMarkup([
+        [KeyboardButton("🎲 GET NUMBER"), KeyboardButton("🔐 2FA CODE")]
     ], resize_keyboard=True, persistent=True)
 
-    await update.message.reply_text(
-        "🔥 **SUPER FIRE OTP BOT** চালু হয়েছে। নিচের বাটনগুলো ব্যবহার করুন।", 
-        reply_markup=keyboard, 
-        parse_mode=ParseMode.MARKDOWN
-    )
+# আনভেরিফাইড ইউজারদের জন্য চ্যানেল জয়েন কিবোর্ড
+def get_join_keyboard():
+    return InlineKeyboardMarkup([
+        [InlineKeyboardButton("📢 Join Join 1", url="https://t.me/EASY_MARKETING1")],
+        [InlineKeyboardButton("📢 Join Join 2", url="https://t.me/EASY_METHOD1")],
+        [InlineKeyboardButton("✅ Verify", callback_data="verify_user")]
+    ])
+
+# সার্ভিস কিবোর্ড মেনু
+def get_services_keyboard():
+    return InlineKeyboardMarkup([
+        [InlineKeyboardButton("📘 Facebook", callback_data="service_fb")],
+        [InlineKeyboardButton("📸 Instagram", callback_data="service_ig")],
+        [InlineKeyboardButton("🔄 Refresh Services", callback_data="refresh_services")],
+        [InlineKeyboardButton("🔙 Back Main Menu", callback_data="back_main")]
+    ])
+
+# --- টেলিগ্রাম বট লজিক ---
+
+async def start(update: Update, context: CallbackContext):
+    user_id = update.effective_user.id
+    if user_id in authorized_users:
+        await update.message.reply_text(
+            "✨ Welcome Easy marketing support! ✨\n💰 Balance: 0.0 BDT",
+            reply_markup=get_main_menu_keyboard()
+        )
+    else:
+        welcome_text = "🔒 **বট ব্যবহার করার আগে নিচের চ্যানেলগুলোতে জয়েন করুন!**\n\nচ্যানেলে জয়েন করার পর **✅ Verify** বাটনে চাপ দিন।"
+        await update.message.reply_text(welcome_text, reply_markup=get_join_keyboard(), parse_mode=ParseMode.MARKDOWN)
+
+async def handle_callback(update: Update, context: CallbackContext):
+    query = update.callback_query
+    await query.answer()
+    user_id = update.effective_user.id
+
+    if query.data == "verify_user":
+        authorized_users.add(user_id)
+        await query.message.delete()
+        await context.bot.send_message(
+            chat_id=user_id,
+            text="✨ Welcome Easy marketing support! ✨\n💰 Balance: 0.0 BDT",
+            reply_markup=get_main_menu_keyboard()
+        )
+    elif query.data == "service_fb":
+        await query.message.edit_text("আপনি **Facebook** সার্ভিসটি সিলেক্ট করেছেন। ওটিপি-র জন্য অপেক্ষা করুন...", reply_markup=get_services_keyboard())
+    elif query.data == "service_ig":
+        await query.message.edit_text("আপনি **Instagram** সার্ভিসটি সিলেক্ট করেছেন। ওটিপি-র জন্য অপেক্ষা করুন...", reply_markup=get_services_keyboard())
+    elif query.data == "refresh_services":
+        await query.message.edit_text("🔄 সার্ভিস লিস্ট রিফ্রেশ করা হয়েছে।\n\n🔍 Select Service:", reply_markup=get_services_keyboard())
+    elif query.data == "back_main":
+        await query.message.delete()
+        await context.bot.send_message(chat_id=user_id, text="🏠 আপনি মেইন মেনুতে ফিরে এসেছেন।", reply_markup=get_main_menu_keyboard())
 
 async def handle_message(update: Update, context: CallbackContext):
     text = update.message.text.strip()
     user_id = update.effective_user.id
+
+    if user_id not in authorized_users:
+        await update.message.reply_text("🔒 **বট ব্যবহার করার আগে নিচের চ্যানেলগুলোতে জয়েন করুন!**", reply_markup=get_join_keyboard())
+        return
+
+    if text == "🎲 GET NUMBER":
+        await update.message.reply_text("🔍 Select Service:", reply_markup=get_services_keyboard())
+    elif text == "🔐 2FA CODE":
+        await update.message.reply_text("🔐 আপনার টু-ফ্যাক্টর (2FA) কোডটি এখানে দিন বা জেনারেট করুন।")
+
+# --- ⚡ ইনস্ট্যান্ট ওটিপি রিসিভার এন্ডপয়েন্ট (FastAPI) ---
+
+@app_fastapi.post("/fastx-webhook")
+async def receive_instant_otp(payload: OTPPayload):
+    """
+    আপনার প্যানেল বা সাইট ওটিপি পাওয়ার সাথে সাথে সরাসরি এই এন্ডপয়েন্টে রিকোয়েস্ট পাঠাবে।
+    কোনো লুপ বা ইন্টারভাল ছাড়াই মিলি-সেকেন্ডের মধ্যে টেলিগ্রামে ফরওয়ার্ড হবে।
+    """
+    otp = payload.otp
+    service = payload.service
+    phone = payload.phone_number
+
+    alert = f"""🔥 **FAST OTP DETECTED! (Instant Webhook)** 🔥
+
+**OTP:** `{otp}`
+**সার্ভিস:** {service}
+**নাম্বার:** `{phone}`
+**স্ট্যাটাস:** ⚡ Real-time Delivery"""
+
+    try:
+        await app_telegram.bot.send_message(
+            chat_id=YOUR_CHAT_ID,
+            text=alert,
+            parse_mode=ParseMode.MARKDOWN
+        )
+        return {"status": "success", "message": "OTP sent in 0 seconds!"}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+async def run_bot_and_api():
+    app_telegram.add_handler(CommandHandler("start", start))
+    app_telegram.add_handler(CallbackQueryHandler(handle_callback))
+    app_telegram.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_message))
     
-    # বোতাম বা কিবোর্ডের কমান্ডগুলোর তালিকা
-    menu_buttons = ["🔗 Join Group 1", "🔗 Join Group 2", "✅ Verify", "📱 GET NUMBER", "📊 My Status", "👨‍💼 Contact Admin"]
+    await app_telegram.initialize()
+    await app_telegram.start()
+    await app_telegram.updater.start_polling()
+    print("🚀 টেলিগ্রাম বট ব্যাকগ্রাউন্ডে সফলভাবে রান হয়েছে...")
 
-    # ১. বাটন ক্লিকের রেসপন্স হ্যান্ডলিং
-    if text == "✅ Verify":
-        authorized_users.add(user_id)
-        await update.message.reply_text("✅ ভেরিফাই সফল! এখন OTP অ্যালার্ট পাবেন।")
-        return  # কাজ শেষ, তাই এখানেই ফাংশন থামিয়ে দিচ্ছি
-
-    elif text == "📊 My Status":
-        state = "✅ ভেরিফাইড" if user_id in authorized_users else "❌ Verify করুন"
-        await update.message.reply_text(f"📊 স্ট্যাটাস: {state}")
-        return
-
-    elif text == "📱 GET NUMBER":
-        await update.message.reply_text("📱 সার্ভিস নির্বাচন করুন (Facebook, Instagram ইত্যাদি)।")
-        return
-
-    elif text == "👨‍💼 Contact Admin":
-        await update.message.reply_text("👨‍💼 অ্যাডমিনের সাথে যোগাযোগ করুন।")
-        return
-        
-    elif text in ["🔗 Join Group 1", "🔗 Join Group 2"]:
-        await update.message.reply_text("🔗 গ্রুপে জয়েন করার লিংক পেতে অ্যাডমিনের সাথে যোগাযোগ করুন।")
-        return
-
-    # ২. ওটিপি ডিটেকশন লজিক (শুধুমাত্র সাধারণ টেক্সট মেসেজের জন্য)
-    # মেসেজটি যদি উপরের কোনো বাটন না হয়, তবেই ওটিপি চেক করবে
-    if text not in menu_buttons:
-        if user_id not in authorized_users:
-            # ইউজার ভেরিফাইড না থাকলে ওটিপি অ্যালার্ট পাঠাবে না
-            return
-            
-        otps = OTP_PATTERN.findall(text)
-        if otps:
-            for otp in otps:
-                alert = f"🔥 **FAST OTP DETECTED!** 🔥\n\n" \
-                        f"**OTP:** `{otp}`\n" \
-                        f"**গ্রুপ:** {update.message.chat.title or 'Private'}\n" \
-                        f"**ইউজার:** {update.effective_user.first_name}\n" \
-                        f"**টাইম:** {update.message.date.strftime('%Y-%m-%d %H:%M:%S')}"
-                
-                await context.bot.send_message(YOUR_CHAT_ID, alert, parse_mode=ParseMode.MARKDOWN)
-
-def main():
-    app = Application.builder().token(TOKEN).build()
-    app.add_handler(CommandHandler("start", start))
-    
-    # filters.TEXT & ~filters.COMMAND নিশ্চিত করে যে কোনো বটের কমান্ড (/start) এখানে আসবে না
-    app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_message))
-    
-    print("🚀 SUPER FIRE OTP BOT চালু হয়েছে...")
-    app.run_polling()
+@app_fastapi.on_event("startup")
+async def startup_event():
+    asyncio.create_task(run_bot_and_api())
 
 if __name__ == '__main__':
-    main()
+    # Railway-এর ডাইনামিক পোর্ট ধরার জন্য এই কনফিগারেশন জরুরি
+    import os
+    port = int(os.environ.get("PORT", 8080))
+    uvicorn.run(app_fastapi, host="0.0.0.0", port=port)
