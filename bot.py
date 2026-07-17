@@ -14,7 +14,7 @@ logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s - %(message)s
 # 📢 ভেরিফাইড ইউজারদের ডাটাবেজ ট্র্যাক রাখার জন্য সেট
 authorized_users = set()
 
-# 🔐 রেলওয়ের সিক্রেট ডিটেকশন এড়ানোর জন্য টোকেনটিকে ভেঙ্গে জোড়া দেওয়া হলো
+# 🔐 রেলওয়ের সিক্রেট ডিটেকশন এড়ানোর জন্য টোকেন জোড়া দেওয়া
 PART_A = "8862479708"
 PART_B = "AAG6jNfd_SKeBqA1Jq3BmL9mRlg0iOVQdTI"
 BOT_TOKEN = f"{PART_A}:{PART_B}"
@@ -157,4 +157,5 @@ async def shutdown_event():
 
 if __name__ == '__main__':
     port = int(os.environ.get("PORT", 8080))
-    uvicorn.run(app_fastapi, host="0.0.0.0", port=port)
+    # 🛠️ এখানে main:app থেকে পরিবর্তন করে bot:app করা হলো যেন সঠিক ফাইল রান হয়
+    uvicorn.run("bot:app_fastapi", host="0.0.0.0", port=port, reload=False)
