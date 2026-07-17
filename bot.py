@@ -17,10 +17,13 @@ authorized_users = set()
 # 🔐 রেলওয়ের Variables থেকে টোকেন এবং চ্যাট আইডি সংগ্রহ (কোড এখন সম্পূর্ণ ফ্রেশ ও নিরাপদ)
 BOT_TOKEN = os.environ.get("BOT_TOKEN")
 YOUR_CHAT_ID = int(os.environ.get("YOUR_CHAT_ID", "7455109015"))
-API_KEY = "MURAD_F455C219DCF80BC50E1E696E"
+API_KEY = os.environ.get("API_KEY")
 
 if not BOT_TOKEN:
     raise ValueError("ERROR: BOT_TOKEN is missing in Railway Variables!")
+
+if not API_KEY:
+    raise ValueError("ERROR: API_KEY is missing in Railway Variables!")
 
 # টেলিগ্রাম এবং FastAPI ইনিশিয়ালাইজেশন
 app_telegram = Application.builder().token(BOT_TOKEN).build()
