@@ -7,9 +7,6 @@ from telegram.constants import ParseMode
 TOKEN = "8862479708:AAG6jNfd_SKeBqA1Jq3BmL9mRlg0iOVQdTI"
 YOUR_CHAT_ID = 7455109015
 
-GROUP1 = "EASY_MARKETING1"
-GROUP2 = "EASY_METHOD1"
-
 OTP_PATTERN = re.compile(r'\b(\d{4,8})\b')
 authorized_users = set()
 
@@ -23,11 +20,7 @@ async def start(update: Update, context: CallbackContext):
         [KeyboardButton("👨‍💼 Contact Admin")]
     ], resize_keyboard=True, persistent=True)
 
-    text = """🔥 **SUPER FIRE OTP BOT**
-
-নিচের বাটনগুলো ব্যবহার করুন।"""
-
-    await update.message.reply_text(text, reply_markup=keyboard, parse_mode=ParseMode.MARKDOWN)
+    await update.message.reply_text("🔥 **SUPER FIRE OTP BOT** চালু হয়েছে। নিচের বাটনগুলো ব্যবহার করুন।", reply_markup=keyboard, parse_mode=ParseMode.MARKDOWN)
 
 async def handle_message(update: Update, context: CallbackContext):
     text = update.message.text
