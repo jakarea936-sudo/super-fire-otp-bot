@@ -9,18 +9,18 @@ from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup, ReplyKe
 from telegram.ext import Application, MessageHandler, filters, CallbackContext, CommandHandler, CallbackQueryHandler
 from telegram.constants import ParseMode
 
-# ⚠️ আপনার ক্রেডেনশিয়ালস
-TOKEN = "8862479708:AAG6jNfd_SKeBqA1Jq3BmL9mRlg0iOVQdTI"
-YOUR_CHAT_ID = 7455109015
-API_KEY = "MURAD_F455C219DCF80BC50E1E696E" # আপনার প্যানেল এপিআই কি
-
 logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s - %(message)s', level=logging.INFO)
 
 # 📢 ভেরিফাইড ইউজারদের ডাটাবেজ ট্র্যাক রাখার জন্য সেট
 authorized_users = set()
 
 # টেলিগ্রাম এবং FastAPI ইনিশিয়ালাইজেশন
-app_telegram = Application.builder().token(TOKEN).build()
+# (টোকেন সরাসরি কোডে থাকলে রেলওয়ের বিল্ডারের রিডিং সমস্যা এড়াতে এটি স্ট্রিং হিসেবে রিড করানো হলো)
+BOT_TOKEN = str("8862479708:AAG6jNfd_SKeBqA1Jq3BmL9mRlg0iOVQdTI")
+YOUR_CHAT_ID = 7455109015
+API_KEY = "MURAD_F455C219DCF80BC50E1E696E"
+
+app_telegram = Application.builder().token(BOT_TOKEN).build()
 app_fastapi = FastAPI()
 
 # প্যানেল থেকে আসা ওটিপি ডেটা ফরম্যাট করার মডেল
@@ -105,12 +105,9 @@ async def handle_message(update: Update, context: CallbackContext):
 
 @app_fastapi.post("/fastx-webhook")
 async def receive_telegram_update(request: Request):
-    """টেলিগ্রাম থেকে পাঠানো রিয়েল-টাইম আপডেট হ্যান্ডল করবে"""
     try:
         data = await request.json()
         update = Update.de_json(data, app_telegram.bot)
-        
-        # ব্যাকগ্রাউন্ডে অ্যাসিনক্রোনাসলি রান করার জন্য টাস্ক ক্রিয়েট করা হলো
         asyncio.create_task(app_telegram.application.process_update(update))
         return {"status": "ok"}
     except Exception as e:
@@ -142,12 +139,10 @@ async def receive_instant_otp(payload: OTPPayload):
 
 @app_fastapi.on_event("startup")
 async def startup_event():
-    # হ্যান্ডলার অ্যাড করা
     app_telegram.add_handler(CommandHandler("start", start))
     app_telegram.add_handler(CallbackQueryHandler(handle_callback))
     app_telegram.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_message))
     
-    # টেলিগ্রাম অ্যাপ লাইফসাইকেল চালু করা
     await app_telegram.initialize()
     await app_telegram.start()
     logging.info("🚀 বট এবং এপিআই সফলভাবে সংযুক্ত হয়েছে...")
