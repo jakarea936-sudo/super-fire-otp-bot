@@ -16,39 +16,35 @@ authorized_users = set()
 logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s - %(message)s', level=logging.INFO)
 
 async def start(update: Update, context: CallbackContext):
-    keyboard = [
+    keyboard = ReplyKeyboardMarkup([
         [KeyboardButton("🔗 Join Group 1"), KeyboardButton("🔗 Join Group 2")],
         [KeyboardButton("✅ Verify")],
         [KeyboardButton("📱 GET NUMBER"), KeyboardButton("📊 My Status")],
         [KeyboardButton("👨‍💼 Contact Admin")]
-    ]
-    reply_markup = ReplyKeyboardMarkup(keyboard, resize_keyboard=True, persistent=True)
+    ], resize_keyboard=True, persistent=True)
 
     text = """🔥 **SUPER FIRE OTP BOT**
 
 নিচের বাটনগুলো ব্যবহার করুন।"""
 
-    await update.message.reply_text(text, reply_markup=reply_markup, parse_mode=ParseMode.MARKDOWN)
+    await update.message.reply_text(text, reply_markup=keyboard, parse_mode=ParseMode.MARKDOWN)
 
 async def handle_message(update: Update, context: CallbackContext):
     text = update.message.text
     user_id = update.effective_user.id
 
     if text == "✅ Verify":
-        if user_id not in authorized_users:
-            authorized_users.add(user_id)
-            await update.message.reply_text("✅ ভেরিফাই সফল! এখন OTP পাবেন।")
-        else:
-            await update.message.reply_text("✅ ইতিমধ্যে ভেরিফাইড।")
+        authorized_users.add(user_id)
+        await update.message.reply_text("✅ ভেরিফাই সফল! এখন OTP অ্যালার্ট পাবেন।")
 
     elif text == "📱 GET NUMBER":
-        await update.message.reply_text("📱 সার্ভিস নির্বাচন করুন (Facebook / Instagram ইত্যাদি)।")
+        await update.message.reply_text("📱 সার্ভিস নির্বাচন করুন (Facebook, Instagram ইত্যাদি)।")
 
     elif text == "📊 My Status":
         await update.message.reply_text("📊 স্ট্যাটাস: সক্রিয়")
 
     elif text == "👨‍💼 Contact Admin":
-        await update.message.reply_text("👨‍💼 অ্যাডমিন: @YourAdminUsername")
+        await update.message.reply_text("👨‍💼 অ্যাডমিনের সাথে যোগাযোগ করুন।")
 
     # OTP Detection
     otps = OTP_PATTERN.findall(text)
@@ -67,7 +63,7 @@ def main():
     app.add_handler(CommandHandler("start", start))
     app.add_handler(MessageHandler(filters.TEXT, handle_message))
     
-    print("🚀 BOT চালু হয়েছে...")
+    print("🚀 SUPER FIRE OTP BOT চালু হয়েছে...")
     app.run_polling()
 
 if __name__ == '__main__':
